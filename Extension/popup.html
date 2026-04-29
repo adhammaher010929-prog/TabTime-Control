@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Focus Tab Lock</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface2: #1a1a26;
+      --border: #2a2a40;
+      --accent: #6c63ff;
+      --accent2: #ff6584;
+      --text: #e8e8f0;
+      --muted: #6b6b8a;
+      --success: #4ade80;
+      --radius: 10px;
+    }
+
+    body {
+      width: 400px;
+      min-height: 200px;
+      max-height: 600px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      padding: 16px 18px 14px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .logo {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .header-text h1 {
+      font-size: 15px; font-weight: 800;
+      letter-spacing: -0.3px; line-height: 1;
+    }
+    .header-text p {
+      font-size: 10px; color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      margin-top: 2px;
+    }
+    .status-badge {
+      margin-left: auto;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 9px;
+      font-family: 'DM Mono', monospace;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .status-badge.idle {
+      background: rgba(107,107,138,0.15);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .status-badge.active {
+      background: rgba(108,99,255,0.2);
+      color: var(--accent);
+      border: 1px solid rgba(108,99,255,0.4);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    /* ── ACTIVE SESSION PANEL ── */
+    #active-panel {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      padding: 16px 18px;
+      gap: 12px;
+    }
+    .session-info-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+    }
+    .session-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+    }
+    .session-row + .session-row { margin-top: 8px; }
+    .session-label { color: var(--muted); font-family: 'DM Mono', monospace; }
+    .session-val {
+      font-weight: 600; font-size: 12px;
+      font-family: 'DM Mono', monospace;
+      color: var(--accent);
+    }
+    .timer-large {
+      text-align: center;
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      color: var(--text);
+      padding: 8px 0 4px;
+      font-family: 'DM Mono', monospace;
+    }
+    .timer-label {
+      text-align: center;
+      font-size: 10px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .btn-stop {
+      width: 100%;
+      padding: 12px;
+      background: rgba(255,101,132,0.1);
+      border: 1px solid rgba(255,101,132,0.3);
+      color: var(--accent2);
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.3px;
+    }
+    .btn-stop:hover {
+      background: rgba(255,101,132,0.2);
+      border-color: rgba(255,101,132,0.6);
+    }
+
+    /* ── SETUP PANEL ── */
+    #setup-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .mode-selector {
+      display: flex;
+      gap: 16px;
+      padding: 12px 18px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+    .mode-selector label {
+      font-size: 12px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .mode-selector input[type="radio"] {
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* Tabs section */
+    .section-label {
+      padding: 10px 18px 6px;
+      font-size: 10px;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      flex-shrink: 0;
+    }
+
+    /* Tab list */
+    #tabs-section { display: flex; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
+    .tabs-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px 8px;
+      flex-shrink: 0;
+    }
+    .tabs-count {
+      font-size: 10px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+    }
+    .btn-select-all {
+      font-size: 10px;
+      color: var(--accent);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'DM Mono', monospace;
+      padding: 3px 6px;
+      border-radius: 4px;
+      transition: background 0.15s;
+    }
+    .btn-select-all:hover { background: rgba(108,99,255,0.1); }
+
+    #tabs-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-height: 0;
+    }
+    #tabs-list::-webkit-scrollbar { width: 4px; }
+    #tabs-list::-webkit-scrollbar-track { background: transparent; }
+    #tabs-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .tab-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .tab-item:hover { background: var(--surface2); border-color: rgba(108,99,255,0.3); }
+    .tab-item.selected { border-color: rgba(108,99,255,0.5); background: rgba(108,99,255,0.08); }
+
+    .tab-checkbox {
+      width: 16px; height: 16px;
+      appearance: none;
+      border: 1.5px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg);
+      flex-shrink: 0;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.15s;
+    }
+    .tab-checkbox:checked {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .tab-checkbox:checked::after {
+      content: '';
+      position: absolute;
+      left: 4px; top: 1px;
+      width: 5px; height: 9px;
+      border: 2px solid #fff;
+      border-left: none; border-top: none;
+      transform: rotate(45deg);
+    }
+
+    .tab-favicon {
+      width: 14px; height: 14px;
+      border-radius: 2px;
+      flex-shrink: 0;
+      object-fit: contain;
+    }
+    .tab-favicon-placeholder {
+      width: 14px; height: 14px;
+      background: var(--border);
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .tab-info { flex: 1; min-width: 0; display: flex; flex-direction: column; cursor: pointer; }
+    .tab-title {
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.2;
+    }
+    .tab-domain {
+      font-size: 9px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      margin-top: 1px;
+    }
+
+    /* Sequential controls */
+    .tab-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .btn-move {
+      background: none; border: none; color: var(--muted); cursor: pointer; font-size: 9px;
+      padding: 2px; border-radius: 2px;
+    }
+    .btn-move:hover { color: var(--accent); background: rgba(108,99,255,0.1); }
+    .tab-order-badge {
+      background: var(--accent); color: #fff; border-radius: 50%;
+      width: 16px; height: 16px; display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: bold; flex-shrink: 0; margin-right: 4px;
+    }
+    .tab-duration-container {
+      display: flex; align-items: center; gap: 4px;
+    }
+    .tab-duration-input {
+      width: 44px; background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); border-radius: 4px; text-align: center; font-size: 11px;
+      padding: 4px 2px; font-family: 'DM Mono', monospace; outline: none;
+    }
+    .tab-duration-input:focus { border-color: var(--accent); }
+
+    body[data-mode="whitelist"] .sequential-only { display: none !important; }
+    body[data-mode="sequential"] .whitelist-only { display: none !important; }
+
+    /* No tabs / limit mode */
+    #no-tabs-section {
+      display: none;
+      padding: 0 18px;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .info-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      text-align: center;
+    }
+    .info-box .icon { font-size: 24px; margin-bottom: 6px; }
+    .info-box p { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+    /* Duration + Start */
+    .bottom-section {
+      padding: 10px 18px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .duration-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .duration-label {
+      font-size: 10px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      flex-shrink: 0;
+    }
+    .duration-input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 10px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      text-align: center;
+      transition: border-color 0.15s;
+      outline: none;
+    }
+    .duration-input:focus { border-color: var(--accent); }
+    .duration-input::-webkit-inner-spin-button { display: none; }
+
+    .unit-select {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 8px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .unit-select:focus { border-color: var(--accent); }
+
+    .max-tabs-input-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .max-tabs-input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 10px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .max-tabs-input:focus { border-color: var(--accent); }
+    .max-tabs-input::-webkit-inner-spin-button { display: none; }
+
+    .btn-start {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, var(--accent), #8b5cf6);
+      border: none;
+      border-radius: var(--radius);
+      color: #fff;
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-start::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .btn-start:hover::before { opacity: 1; }
+    .btn-start:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(108,99,255,0.4); }
+    .btn-start:active { transform: translateY(0); }
+    .btn-start:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .error-msg {
+      font-size: 10px;
+      color: var(--accent2);
+      font-family: 'DM Mono', monospace;
+      text-align: center;
+      min-height: 14px;
+    }
+  </style>
+</head>
+<body data-mode="whitelist">
+
+  <div class="header">
+    <div class="logo">🔒</div>
+    <div class="header-text">
+      <h1>Focus Tab Lock</h1>
+      <p>PRODUCTIVITY ENFORCER</p>
+    </div>
+    <div id="status-badge" class="status-badge idle">IDLE</div>
+  </div>
+
+  <div id="active-panel">
+    <div class="session-info-card">
+      <div class="timer-large" id="timer-display">00:00</div>
+      <div class="timer-label" id="timer-label">remaining</div>
+      <div style="height:12px;"></div>
+      <div class="session-row">
+        <span class="session-label">MODE</span>
+        <span class="session-val" id="active-mode">—</span>
+      </div>
+      <div class="session-row">
+        <span class="session-label">RESTRICTION</span>
+        <span class="session-val" id="active-restriction">—</span>
+      </div>
+    </div>
+    <button class="btn-stop" id="btn-stop">⏹ End Focus Session</button>
+  </div>
+
+  <div id="setup-panel">
+    
+    <div class="mode-selector" id="mode-selector">
+      <label><input type="radio" name="focusMode" value="whitelist" checked> Whitelist</label>
+      <label><input type="radio" name="focusMode" value="sequential"> Sequential (New!)</label>
+    </div>
+
+    <div id="tabs-section">
+      <div class="section-label" id="tabs-section-label">Select tabs to allow</div>
+      <div class="tabs-toolbar">
+        <span class="tabs-count" id="tabs-count">0 tabs</span>
+        <button class="btn-select-all" id="btn-select-all">Select All</button>
+      </div>
+      <div id="tabs-list"></div>
+    </div>
+
+    <div id="no-tabs-section">
+      <div class="section-label" style="padding-left:0;">Limit Mode</div>
+      <div class="info-box">
+        <div class="icon">🌿</div>
+        <p>No tabs currently open.<br/>Set a maximum tab limit for your session.</p>
+      </div>
+      <div class="max-tabs-input-row">
+        <span class="duration-label">MAX TABS</span>
+        <input class="max-tabs-input" type="number" id="max-tabs" min="1" max="20" value="3" placeholder="e.g. 3" />
+      </div>
+    </div>
+
+    <div class="bottom-section">
+      <div class="duration-row whitelist-only" id="duration-row">
+        <span class="duration-label">DURATION</span>
+        <input class="duration-input" type="number" id="duration-value" min="1" value="25" placeholder="25" />
+        <select class="unit-select" id="duration-unit">
+          <option value="minutes">min</option>
+          <option value="hours">hr</option>
+        </select>
+      </div>
+      <div class="error-msg" id="error-msg"></div>
+      <button class="btn-start" id="btn-start">🎯 Start Focus Session</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

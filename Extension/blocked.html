@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blocked - Focus Mode</title>
+  <style>
+    :root {
+      --bg-color: #0a0a0f;
+      --surface-color: #12121a;
+      --text-main: #e8e8f0;
+      --text-sub: #6b6b8a;
+      --accent: #6c63ff;
+      --accent-hover: #5a52d5;
+      --border-color: rgba(108, 99, 255, 0.2);
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+    }
+
+    .container {
+      background: var(--surface-color);
+      padding: 48px 40px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      max-width: 420px;
+      width: 90%;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 12px;
+      letter-spacing: -0.5px;
+    }
+
+    p {
+      color: var(--text-sub);
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    #current-allowed-container {
+      display: none;
+      margin-bottom: 24px;
+      padding: 12px;
+      background: rgba(108, 99, 255, 0.1);
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      font-weight: 600;
+      color: var(--accent);
+      font-size: 14px;
+    }
+
+    .timer-card {
+      margin-bottom: 32px;
+      padding: 24px;
+      background: rgba(108, 99, 255, 0.05);
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    #time-remaining {
+      font-size: 42px;
+      font-weight: 800;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 1px;
+    }
+
+    .time-label {
+      font-size: 12px;
+      color: var(--text-sub);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-top: 8px;
+      font-weight: 600;
+    }
+
+    button {
+      background-color: var(--accent);
+      color: #ffffff;
+      border: none;
+      padding: 14px 28px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      width: 100%;
+    }
+
+    button:hover {
+      background-color: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Focus Mode Active</h1>
+    <p>This website is blocked during your session to help you maintain productivity.</p>
+    
+    <div id="current-allowed-container">
+      Current Focus: <span id="current-allowed-tab"></span>
+    </div>
+
+    <div class="timer-card">
+      <div id="time-remaining">--:--</div>
+      <div class="time-label">Remaining Time</div>
+    </div>
+
+    <button id="go-back">Go Back</button>
+  </div>
+
+  <script>
+    const timeDisplay = document.getElementById('time-remaining');
+    const goBackButton = document.getElementById('go-back');
+    const currentAllowedContainer = document.getElementById('current-allowed-container');
+    const currentAllowedTab = document.getElementById('current-allowed-tab');
+
+    goBackButton.addEventListener('click', () => {
+      if (window.history.length > 2) {
+        window.history.back();
+      } else {
+        window.close();
+      }
+    });
+
+    function updateTimer() {
+      chrome.storage.local.get(['focusState'], (result) => {
+        const state = result.focusState;
+        
+        if (!state || !state.active) {
+          timeDisplay.textContent = "00:00";
+          return;
+        }
+
+        let endTime = state.endTime;
+        
+        if (state.mode === "sequential") {
+          endTime = state.currentEndTime;
+          const currentDomain = state.focusQueue[state.currentIndex]?.domain;
+          if (currentDomain) {
+            currentAllowedContainer.style.display = "block";
+            currentAllowedTab.textContent = currentDomain;
+          }
+        } else if (state.mode === "whitelist") {
+          currentAllowedContainer.style.display = "block";
+          currentAllowedTab.textContent = "Whitelisted Domains Only";
+        }
+
+        const now = Date.now();
+        const timeLeft = endTime - now;
+
+        if (timeLeft <= 0) {
+          timeDisplay.textContent = "00:00";
+          return;
+        }
+
+        const minutes = Math.floor(timeLeft / 60000);
+        const seconds = Math.floor((timeLeft % 60000) / 1000);
+        
+        timeDisplay.textContent = 
+          `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      });
+    }
+
+    updateTimer();
+    setInterval(updateTimer, 500);
+  </script>
+</body>
+</html>
